@@ -2,16 +2,10 @@
 // Display
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-// Temperature/Humidity
-#include <DHT.h>
 // Watchdog
 #include <avr/wdt.h>
 
 // Constants
-// Temp/Hum sensor
-#define DHTPIN 2     // what pin we're connected to
-#define DHTTYPE DHT22   // DHT 22  (AM2302)
-DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
 // Display
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -27,21 +21,14 @@ const long intervalSensor = 1000; // interval at which to check sensors (millise
 const long intervalDisplay = 4000; // interval at which to update display (milliseconds)
 
 // Variables
-float hum;  //Stores humidity value
-float temp; //Stores temperature value
 int soilMoistureValue = 0;  // analog soild moisture value
 int soilMoisturePercent = 0; // calculated percentage value
 unsigned long previousMillisSensor = 0; // will store last time sensors was updated
 unsigned long previousMillisDisplay = 0; // will store last time display was updated
 
-int displayCounter = 0;
-
 void setup() {
   pinMode(RELAY_PIN, OUTPUT);
   Serial.begin(9600); // open serial port, set the baud rate to 9600 bps
-
-  // initalise temp/hum sensor
-  dht.begin();
 
   // initalise display
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -89,16 +76,6 @@ void readSensors()
   soilMoisturePercent = map(soilMoistureValue, AirValue, WaterValue, 0, 100);
   // Serial.println(soilmoisturepercent);
 
-  //Read data and store it to variables hum and temp
-  hum = dht.readHumidity();
-  temp= dht.readTemperature();
-  //Print temp and humidity values to serial monitor
-  Serial.print("Humidity: ");
-  Serial.print(hum);
-  Serial.print(" %, Temp: ");
-  Serial.print(temp);
-  Serial.println(" Celsius");
-
   handleRelay();
 }
 
@@ -125,43 +102,12 @@ void handleRelay()
 void outputOnDisplay() 
 {
   display.clearDisplay();
-  
-  if (displayCounter > 2) {
-    displayCounter = 0;
-  }
-
-  if (displayCounter == 0) {
-    display.setCursor(15, 0);
-    display.setTextSize(1);
-    display.println("Soil moisture:");
-    display.setCursor(15, 15);
-    display.setTextSize(2);
-    display.print(soilMoisturePercent);
-    display.println(" % ");
-    display.display();
-  }
-
-  if (displayCounter == 1) {
-    display.setCursor(15, 0);
-    display.setTextSize(1);
-    display.println("Humidity");
-    display.setCursor(15, 15);
-    display.setTextSize(2);
-    display.print(hum);
-    display.println(" %");
-    display.display();
-  }
-
-  if (displayCounter == 2) {
-    display.setCursor(15, 0);
-    display.setTextSize(1);
-    display.println("Temperature");
-    display.setCursor(15, 15);
-    display.setTextSize(2);
-    display.print(temp);
-    display.println(" C");
-    display.display();
-  }
-  
-  displayCounter++;
+  display.setCursor(15, 0);
+  display.setTextSize(1);
+  display.println("Soil moisture:");
+  display.setCursor(15, 15);
+  display.setTextSize(2);
+  display.print(soilMoisturePercent);
+  display.println(" % ");
+  display.display();
 }
