@@ -1,42 +1,73 @@
 // Libraries
 // Display
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+// #include <Adafruit_GFX.h>
+// #include <Adafruit_SSD1306.h>
 // Watchdog
-#include <avr/wdt.h>
+// #include <avr/wdt.h>
 
 // Constants
+#define DEBUG true
 // Display
-#define OLED_RESET 4
-Adafruit_SSD1306 display(OLED_RESET);
+// #define OLED_RESET 4
+// Adafruit_SSD1306 display(OLED_RESET);
 // Relay
 #define RELAY_PIN 7 // pin to operate relay
 
 // values for soil moisture sensor calibration 
 // completly dry and wet
-const int AirValue = 765; 
+const int AirValue = 950; 
 const int WaterValue = 364;
 
-const long intervalSensor = 1000; // interval at which to check sensors (milliseconds)
-const long intervalDisplay = 4000; // interval at which to update display (milliseconds)
+/**
+ * Time to activate relay for pouring (1000 * x = x seconds)
+ */
+const int timeToPour = 1000 * 10;
+
+/**
+ * Check sensor every 1 second (value in milliseconds)
+ */
+const long intervalSensor = 2000;
+
+/**
+ * Update display every 4 second (value in milliseconds)
+ */
+const long intervalDisplay = 4000;
 
 // Variables
-int soilMoistureValue = 0;  // analog soild moisture value
-int soilMoisturePercent = 0; // calculated percentage value
-unsigned long previousMillisSensor = 0; // will store last time sensors was updated
-unsigned long previousMillisDisplay = 0; // will store last time display was updated
+/**
+ * analog soil moisture value
+ */
+int soilMoistureValue = 0; 
+/**
+ * calculated percentage value
+ */
+int soilMoisturePercent = 0; 
+/**
+ * store last time sensors was updated
+ */
+unsigned long previousMillisSensor = 0;
+/**
+ * store last time display was updated
+ */
+unsigned long previousMillisDisplay = 0; 
+/**
+ * Used to loop through the different sensor values 
+ */
+int displayCounter = 0;
 
 void setup() {
-  pinMode(RELAY_PIN, OUTPUT);
   Serial.begin(9600); // open serial port, set the baud rate to 9600 bps
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB
+  }
 
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, HIGH);
   // initalise display
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.setTextColor(WHITE);
+  // initialiseDisplay();
 
   // some startup text just for fun....
-  display.clearDisplay();
-  display.setCursor(5, 10);
+  /*display.setCursor(5, 10);
   display.setTextSize(2);
   display.println("X-303.net");
   display.display();
@@ -47,7 +78,7 @@ void setup() {
   display.println("Cucumber One V0.1");
   display.display();
   delay(1000);
-  display.clearDisplay();
+  display.clearDisplay();*/
 }
 
 void loop() {
@@ -62,46 +93,58 @@ void loop() {
     readSensors();
   }
 
-  if (currentMillis - previousMillisDisplay >= intervalDisplay) {
+  /*if (currentMillis - previousMillisDisplay >= intervalDisplay) {
     // save the last time you updates the display
     previousMillisDisplay = currentMillis;
     outputOnDisplay();
-  }
+  }*/
 }
 
+/**
+ * Read values from all connected sensors.
+ */
 void readSensors() 
 {
-  soilMoistureValue = analogRead(A0);  //put Sensor insert into soil
-  // Serial.println(soilMoistureValue);
+  soilMoistureValue = analogRead(A0);
+  debugOutput("soilMoistureValue: " + (String) soilMoistureValue);
   soilMoisturePercent = map(soilMoistureValue, AirValue, WaterValue, 0, 100);
-  // Serial.println(soilmoisturepercent);
 
   handleRelay();
 }
 
+/**
+ * Activate relay based on soilmoisture value
+ */
 void handleRelay()
 {
   // relay logic  
   if (soilMoisturePercent >= 100) {
-    Serial.println("100 %");
+    debugOutput("Soil moisture: 100 %");
   } else if(soilMoisturePercent <= 0) {
-    Serial.println("0 %");
+    debugOutput("Soil moisture: 0 %");
   } else if(soilMoisturePercent > 0 && soilMoisturePercent < 100)  {
+    debugOutput("Soil moisture: " + (String) soilMoisturePercent + "%");
     if (soilMoisturePercent < 50) {
       // enable relay (water needed)
-      digitalWrite(RELAY_PIN, LOW);
+      digitalWrite(RELAY_PIN, LOW);      
+      debugOutput("Pouring water");
+      // pour for an adjustable time, than set stop pouring
+      delay(timeToPour);
+      digitalWrite(RELAY_PIN, HIGH);      
     } else {
       // disable relay (dirt is moist enough)
       digitalWrite(RELAY_PIN, HIGH);
+      debugOutput("No pouring needed");
     }
-    Serial.print(soilMoisturePercent);
-    Serial.println("%");    
   }
 }
 
+/**
+ * Output sensor values on display
+ */
 void outputOnDisplay() 
 {
-  display.clearDisplay();
+  /*display.clearDisplay();
   display.setCursor(15, 0);
   display.setTextSize(1);
   display.println("Soil moisture:");
@@ -109,5 +152,26 @@ void outputOnDisplay()
   display.setTextSize(2);
   display.print(soilMoisturePercent);
   display.println(" % ");
-  display.display();
+  display.display();*/
+}
+
+/**
+ * Initialise display. 
+ * Potentially usefull if display is made toggable
+ */
+void initialiseDisplay()
+{
+  /*display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.setTextColor(WHITE);
+  display.clearDisplay();*/
+}
+
+/**
+ * Output text on serial monitor if debug is on.
+ */
+void debugOutput(String text)
+{
+  if (DEBUG) {
+    Serial.println(text);
+  }
 }
